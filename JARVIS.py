@@ -1,8 +1,9 @@
 from tkinter import *
 from PIL import Image, ImageTk, ImageSequence
-import time
 import pyttsx3
 import speech_recognition as sr
+import threading
+import time
 
 # Initialize the TTS engine
 engine = pyttsx3.init()
@@ -20,13 +21,12 @@ root.geometry("600x800")
 root.minsize(300, 400)
 
 # Add a label with some text
-head = Label(root, text="Hi!! I am JARVIS", font=('calibri', 16, 'bold'))
+head = Label(root, text="Hi! I am JARVIS", font=('calibri', 16, 'bold'))
 head.pack(pady=10)
 
 # Paths to the GIFs
-main_gif_path = r"D:\BCS_IT\Python Project\JARVIS\self\img\sleeping.gif"
-greeting_gif_path = r"D:\BCS_IT\Python Project\JARVIS\self\img\greeting.gif"
-byee_gif_path = r"D:\BCS_IT\Python Project\JARVIS\self\img\byee.gif"
+greeting_gif_path = r"D:\BCS_IT\Python Project\JARVIS\Final\img\greeting.gif"
+byee_gif_path = r"D:\BCS_IT\Python Project\JARVIS\Final\img\byee.gif"
 
 # Function to load GIF frames
 def load_gif_frames(gif_path):
@@ -50,108 +50,50 @@ def play_gif(frames, loop=False, on_complete=None):
 
     update_frame(0)
 
-# Functions to handle button actions
-def play_greeting_gif():
+# Function to handle the Talk button action
+def start_talk():
     global greeting_frames
-    # Stop the current animation
-    image_label.configure(image=None)  # Clear the current image
-    # Display the greeting GIF
-    greeting_frames = load_gif_frames(greeting_gif_path)
-    if greeting_frames:
-        # Display the first frame and start playing the GIF
-        play_gif(greeting_frames, loop=False)
-        # Remove the Wake Up button
-        wake_up_button.pack_forget()
-        # Show the Talk button
-        talk_button.pack(side=LEFT, padx=10)
-        # Speak the greeting message
-        speak('Hi! how can I help you')
-    else:
-        print("Failed to load greeting GIF frames.")
+    # Play the greeting GIF
+    play_gif(greeting_frames, loop=False)
+    # Speak "I am listening"
+    speak("I am listening")
+    # Start a new thread to handle speech recognition
+    threading.Thread(target=listen_for_speech).start()
 
+# Function to play the Bye GIF and exit the program
 def exit_program():
-    frames = load_gif_frames(byee_gif_path)
-    play_gif(frames, loop=False, on_complete=root.quit)
+    global byee_frames
+    # Play the Bye GIF
+    play_gif(byee_frames, loop=False, on_complete=root.quit)
 
-def start_sleeping_gif():
-    global sleeping_frames
-    sleeping_frames = load_gif_frames(main_gif_path)
-    play_gif(sleeping_frames, loop=True)
-
-# Create a label widget to hold the GIF animation
+# Create a label widget to hold the GIF image
 image_label = Label(root)
 image_label.pack(pady=10)
+
+# Load and display the first frame of the greeting GIF
+greeting_frames = load_gif_frames(greeting_gif_path)
+image_label.configure(image=greeting_frames[0])
+
+# Load the Bye GIF frames
+byee_frames = load_gif_frames(byee_gif_path)
 
 # Create buttons
 button_frame = Frame(root)
 button_frame.pack(pady=10)
 
-wake_up_button = Button(button_frame, text="Wake Up", command=play_greeting_gif, font=('calibri', 12, 'bold'), bg='#4CAF50', fg='white')
-wake_up_button.pack(side=LEFT, padx=10)
+talk_button = Button(button_frame, text="Talk", command=start_talk, font=('calibri', 12, 'bold'), bg='#2196F3', fg='white')
+talk_button.pack(side=LEFT, padx=10)
 
 exit_button = Button(button_frame, text="Exit", command=exit_program, font=('calibri', 12, 'bold'), bg='#f44336', fg='white')
 exit_button.pack(side=RIGHT, padx=10)
 
-talk_button = Button(button_frame, text="Talk", command=lambda: talk(), font=('calibri', 12, 'bold'), bg='#2196F3', fg='white')
-talk_button.pack_forget()  # Initially hidden
-
-# Create a label for the clock with a white background, black text, and a border
-clock_label = Label(root, font=('calibri', 18, 'bold'), background='white', foreground='black', padx=10, pady=10,
-                    borderwidth=2, relief='solid')
-clock_label.pack(side=TOP, anchor=NW, padx=10, pady=(10, 0))
-
-# Function to update the clock every second
-def update_clock():
-    current_time = time.strftime('%I:%M:%S %p')  # Time in 12-hour format with AM/PM
-    current_date = time.strftime('%A, %B %d, %Y')  # Day, Month Day, Year
-    clock_label.config(text=f"{current_time}\n{current_date}")
-    root.after(1000, update_clock)  # Update the clock every 1000 milliseconds (1 second)
-
-# Start the clock
-update_clock()
-
-# Global variables to manage animation state
-animation_running = False
-talk_animation_running = False
-
-# Start by playing the sleeping GIF and set it to loop
-start_sleeping_gif()
-
-# Create a label for the "Listening..." message, initially hidden
-talk_label = Label(root, font=('calibri', 14), background='white', foreground='black')
-talk_label.pack(side=TOP, pady=5)
-
-# Create a text box for displaying detected speech with border and padding
+# Create a text box for displaying detected speech
 speech_text_box = Text(root, font=('calibri', 14), background='white', foreground='black', height=6, width=60, wrap=WORD,
                        borderwidth=2, relief='solid')
 speech_text_box.pack(side=BOTTOM, pady=10, padx=10)
 
-# Function to animate the ellipses
-def talk():
-    global talk_animation_running
-    # Show "Listening..." message immediately
-    talk_label.config(text="Listening..")
-    # Speak the listening message
-    speak('I am listening')
-    # Update the text box with animated ellipses
-    talk_animation_running = True
-    animate_ellipses()
-    # Start listening for speech
-    listen_for_speech()
-
-def animate_ellipses():
-    if not talk_animation_running:
-        return
-    current_text = talk_label.cget("text")  # Get current text
-    if current_text.endswith(".."):
-        talk_label.config(text="Listening...")  # Reset text
-    else:
-        talk_label.config(text=current_text + ".")
-    root.after(500, animate_ellipses)
-
 # Function to listen for speech and display the result in the text box
 def listen_for_speech():
-    global talk_animation_running
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
         recognizer.adjust_for_ambient_noise(source)
@@ -170,8 +112,23 @@ def listen_for_speech():
         except sr.RequestError as e:
             speech_text_box.delete("1.0", "end")
             speech_text_box.insert("1.0", f"Sorry, there was an error: {e}")
-        talk_animation_running = False  # Stop ellipses animation
-        talk_label.config(text="")  # Hide the "Listening..." text
+
+# Function to update the digital clock with date and time
+def update_clock():
+    current_time = time.strftime('%H:%M:%S')
+    current_date = time.strftime('%Y-%m-%d')
+    clock_canvas.delete("all")  # Clear the canvas
+    clock_canvas.create_oval(5, 5, 145, 145, fill='#FFA07A', outline="black", width=4)  # Draw filled clock circle
+    clock_canvas.create_text(75, 50, text=current_date, font=('calibri', 10, 'bold'))
+    clock_canvas.create_text(75, 90, text=current_time, font=('calibri', 16, 'bold'))
+    root.after(1000, update_clock)
+
+# Create a canvas for the clock
+clock_canvas = Canvas(root, width=150, height=150)
+clock_canvas.place(relx=1.0, y=10, anchor='ne')
+
+# Start updating the clock
+update_clock()
 
 # Event loop to make the window interactive
 root.mainloop()
